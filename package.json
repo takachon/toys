@@ -1,0 +1,19 @@
+{
+  "name": "toys",
+  "version": "1.0.0",
+  "description": "年齢別の子供向けwebゲーム集",
+  "scripts": {
+    "test": "node test.js",
+    "screenshot": "node screenshot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:42545/git/takachon/toys"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
