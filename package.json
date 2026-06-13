@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "年齢別の子供向けwebゲーム集",
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js",
+    "screenshot": "node screenshot.js"
   },
   "repository": {
     "type": "git",
