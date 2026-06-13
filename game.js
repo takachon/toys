@@ -126,6 +126,116 @@
     round();
   }
 
+  // --- A. タッチであそぼ（1〜2さい）---
+  // どこをタッチしても、たのしい絵がポンとでる
+  function gameBabyTouch(area) {
+    const fun = ["⭐", "🌈", "🎈", "🌸", "🍭", "🐤", "🦋", "🎵", "💖", "🍓", "🌟", "🐻"];
+    area.innerHTML =
+      '<div class="tap-stage" id="babyStage"><span class="tap-hint">がめんを タッチしてね 👆</span></div>';
+    const stage = $("babyStage");
+    setMsg("タッチ してね！", "good");
+
+    function burst(x, y) {
+      addScore(1);
+      const hint = stage.querySelector(".tap-hint");
+      if (hint) hint.remove();
+      const el = document.createElement("div");
+      el.className = "tap-target pop";
+      el.textContent = pick(fun);
+      // ステージ内の相対座標に変換
+      const r = stage.getBoundingClientRect();
+      el.style.left = Math.max(0, Math.min(85, ((x - r.left) / r.width) * 100)) + "%";
+      el.style.top = Math.max(0, Math.min(80, ((y - r.top) / r.height) * 100)) + "%";
+      stage.appendChild(el);
+      setMsg(pick(["わーい！", "ポーン！", "すごい！", "イェイ！"]), "good");
+      later(() => el.remove(), 900);
+    }
+    stage.addEventListener("pointerdown", (e) => burst(e.clientX, e.clientY));
+  }
+
+  // --- B. ぽんぽんバルーン（1〜2さい）---
+  // でてくるふうせんをタッチでパチン
+  function gameBalloon(area) {
+    const balloons = ["🎈", "🟡", "🔴", "🔵", "🟢", "🟣"];
+    area.innerHTML = '<div class="tap-stage" id="balloonStage"></div>';
+    const stage = $("balloonStage");
+    setMsg("ふうせんを パチン！", "good");
+
+    function spawn() {
+      const el = document.createElement("div");
+      el.className = "tap-target float";
+      el.textContent = pick(balloons);
+      el.style.left = rand(80) + "%";
+      el.style.top = 70 + rand(20) + "%";
+      el.addEventListener("pointerdown", () => {
+        addScore(1);
+        el.textContent = "✨";
+        el.classList.add("pop");
+        setMsg(pick(["パチン！", "やったー！", "ぱちぱち！"]), "good");
+        later(() => el.remove(), 250);
+      });
+      stage.appendChild(el);
+      later(() => el.remove(), 3000);
+    }
+    spawn();
+    every(spawn, 1300);
+  }
+
+  // --- C. どうぶつタッチ（2〜3さい）---
+  // おおきなどうぶつをタッチすると、つぎのばしょへ
+  function gameBigTap(area) {
+    const animals = ["🐶", "🐱", "🐰", "🐻", "🐼", "🐸", "🐤", "🦁", "🐮", "🐷", "🐵", "🦒"];
+    area.innerHTML = '<div class="tap-stage" id="bigStage"></div>';
+    const stage = $("bigStage");
+    setMsg("どうぶつを タッチ！", "good");
+
+    function place() {
+      stage.innerHTML = "";
+      const el = document.createElement("div");
+      el.className = "tap-target huge";
+      el.textContent = pick(animals);
+      el.style.left = rand(60) + "%";
+      el.style.top = rand(55) + "%";
+      el.addEventListener("pointerdown", () => {
+        addScore(1);
+        setMsg(pick(["やったー！", "じょうず！", "つかまえた！", "イェイ！"]), "good");
+        place();
+      });
+      stage.appendChild(el);
+    }
+    place();
+  }
+
+  // --- D. おおきいの どっち？（2〜3さい）---
+  function gameBigSmall(area) {
+    const things = ["🍎", "🐶", "⭐", "🎈", "🚗", "🌸", "🐟", "🍓"];
+    function round() {
+      const thing = pick(things);
+      const bigFirst = Math.random() < 0.5;
+      area.innerHTML =
+        '<div class="question">おおきいのは どっち？</div>' +
+        '<div class="choices two" id="ch"></div>';
+      const ch = $("ch");
+      [bigFirst, !bigFirst].forEach((isBig) => {
+        const b = document.createElement("button");
+        b.className = "choice-btn light";
+        b.style.fontSize = isBig ? "3.6rem" : "1.6rem";
+        b.textContent = thing;
+        b.addEventListener("click", () => {
+          if (isBig) {
+            addScore(1);
+            setMsg("せいかい！ 🎉", "good");
+            later(round, 900);
+          } else {
+            setMsg("こっちは ちいさいよ！", "bad");
+          }
+        });
+        ch.appendChild(b);
+      });
+    }
+    round();
+  }
+
   // --- 3. かずをかぞえよう（5〜6さい）---
   function gameCount(area) {
     const things = ["🍎", "🍓", "🐟", "⭐", "🌸", "🚗", "🎈", "🍪"];
@@ -357,6 +467,26 @@
   // データ：年齢グループとゲーム
   // ====================================================
   const AGE_GROUPS = [
+    {
+      id: "b1",
+      label: "1〜2さい",
+      emoji: "👶",
+      color: "linear-gradient(135deg,#ffd1dc,#ffb3c6)",
+      games: [
+        { title: "タッチであそぼ", emoji: "👆", run: gameBabyTouch },
+        { title: "ぽんぽんバルーン", emoji: "🎈", run: gameBalloon },
+      ],
+    },
+    {
+      id: "b2",
+      label: "2〜3さい",
+      emoji: "🧒",
+      color: "linear-gradient(135deg,#ffe29a,#ffc46b)",
+      games: [
+        { title: "どうぶつタッチ", emoji: "🐻", run: gameBigTap },
+        { title: "おおきいの どっち？", emoji: "🔍", run: gameBigSmall },
+      ],
+    },
     {
       id: "a1",
       label: "3〜4さい",

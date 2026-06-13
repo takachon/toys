@@ -31,10 +31,11 @@ window.document.dispatchEvent(new window.Event("DOMContentLoaded"));
 const KG = window.KidsGame;
 
 console.log("\n== 構造テスト ==");
-ok("4つの年齢グループがある", KG.AGE_GROUPS.length === 4);
+ok("6つの年齢グループがある", KG.AGE_GROUPS.length === 6);
+ok("1〜2さい/2〜3さいが先頭にある", KG.AGE_GROUPS[0].label === "1〜2さい" && KG.AGE_GROUPS[1].label === "2〜3さい");
 ok("各グループにゲームがある", KG.AGE_GROUPS.every((g) => g.games.length >= 2));
 ok("年齢えらび画面が表示されている", !doc.getElementById("ageScreen").classList.contains("hidden"));
-ok("年齢カードが4つ描画された", doc.getElementById("ageGrid").children.length === 4);
+ok("年齢カードが6つ描画された", doc.getElementById("ageGrid").children.length === 6);
 
 console.log("\n== uniqueNums ロジック ==");
 const u = KG._internal.uniqueNums(5, 3, 0, 40);
@@ -61,10 +62,13 @@ KG.AGE_GROUPS.forEach((g, gi) => {
   });
 });
 
+// 年齢ラベルからカードの位置を引く
+const ageIndex = (label) => KG.AGE_GROUPS.findIndex((g) => g.label === label);
+
 // けいさんチャレンジで正解を押すとスコアが増えるか
 console.log("\n== あそびテスト（けいさん）==");
 click(doc.getElementById("homeBtn"));
-click(doc.getElementById("ageGrid").children[2]); // 7-9さい
+click(doc.getElementById("ageGrid").children[ageIndex("7〜9さい")]);
 click(doc.getElementById("gameGrid").children[0]); // けいさんチャレンジ
 const q = doc.querySelector(".question").textContent; // "a + b = ?"
 const m = q.match(/(\d+)\s*([+\-])\s*(\d+)/);
@@ -83,7 +87,7 @@ ok("正解でスコアが増える (" + before + "→" + after + ")", after === 
 // 色あわせで正しい色を押すとスコアが増える
 console.log("\n== あそびテスト（いろあわせ）==");
 click(doc.getElementById("homeBtn"));
-click(doc.getElementById("ageGrid").children[0]); // 3-4さい
+click(doc.getElementById("ageGrid").children[ageIndex("3〜4さい")]);
 click(doc.getElementById("gameGrid").children[1]); // いろあわせ
 const hexToRgb = (h) => {
   const n = parseInt(h.slice(1), 16);

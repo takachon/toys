@@ -21,12 +21,41 @@ const url = "http://localhost:8099/index.html";
     console.log("📸 " + name + ".png");
   };
 
-  // 1. 年齢えらび画面
+  // 年齢ラベル → カードの番号(1始まり)
+  const ageNth = await page.evaluate(() => {
+    const map = {};
+    window.KidsGame.AGE_GROUPS.forEach((g, i) => (map[g.label] = i + 1));
+    return map;
+  });
+  const openGame = async (ageLabel, gameNth) => {
+    await page.click("#homeBtn");
+    await page.click(`#ageGrid .age-card:nth-child(${ageNth[ageLabel]})`);
+    await page.waitForSelector("#gameGrid .game-card");
+    await page.click(`#gameGrid .game-card:nth-child(${gameNth})`);
+  };
+
+  // 1. 年齢えらび画面（6グループ）
   await page.waitForSelector("#ageGrid .age-card");
   await shot("01_age_select");
 
+  // 1b. タッチであそぼ（1〜2さい）— 画面をタッチして反応
+  await page.click(`#ageGrid .age-card:nth-child(${ageNth["1〜2さい"]})`);
+  await page.waitForSelector("#gameGrid .game-card");
+  await page.click("#gameGrid .game-card:nth-child(1)");
+  await page.waitForSelector(".tap-stage");
+  await page.mouse.click(210, 380);
+  await page.mouse.click(120, 280);
+  await page.waitForTimeout(200);
+  await shot("01b_baby_touch");
+
+  // 1c. おおきいの どっち？（2〜3さい）
+  await openGame("2〜3さい", 2);
+  await page.waitForSelector(".choices.two .choice-btn");
+  await shot("01c_big_small");
+
   // 2. 3-4さい メニュー
-  await page.click("#ageGrid .age-card:nth-child(1)");
+  await page.click("#homeBtn");
+  await page.click(`#ageGrid .age-card:nth-child(${ageNth["3〜4さい"]})`);
   await page.waitForSelector("#gameGrid .game-card");
   await shot("02_menu_3-4");
 
@@ -39,23 +68,17 @@ const url = "http://localhost:8099/index.html";
   await shot("03_tap_animal");
 
   // 4. いろあわせ
-  await page.click("#homeBtn");
-  await page.click("#ageGrid .age-card:nth-child(1)");
-  await page.click("#gameGrid .game-card:nth-child(2)");
+  await openGame("3〜4さい", 2);
   await page.waitForSelector(".choices .choice-btn");
   await shot("04_color_match");
 
   // 5. かずをかぞえよう (5-6さい)
-  await page.click("#homeBtn");
-  await page.click("#ageGrid .age-card:nth-child(2)");
-  await page.click("#gameGrid .game-card:nth-child(1)");
+  await openGame("5〜6さい", 1);
   await page.waitForSelector(".big-emojis");
   await shot("05_count");
 
   // 6. けいさんチャレンジ (7-9さい) — 正解を押してスコア確認
-  await page.click("#homeBtn");
-  await page.click("#ageGrid .age-card:nth-child(3)");
-  await page.click("#gameGrid .game-card:nth-child(1)");
+  await openGame("7〜9さい", 1);
   await page.waitForSelector(".question");
   const q = await page.textContent(".question");
   const m = q.match(/(\d+)\s*([+\-])\s*(\d+)/);
@@ -73,26 +96,20 @@ const url = "http://localhost:8099/index.html";
   await shot("06_math_correct");
 
   // 7. きおくゲーム
-  await page.click("#homeBtn");
-  await page.click("#ageGrid .age-card:nth-child(3)");
-  await page.click("#gameGrid .game-card:nth-child(2)");
+  await openGame("7〜9さい", 2);
   await page.waitForSelector(".memory-grid .memory-card");
   await page.click(".memory-grid .memory-card:nth-child(1)");
   await page.waitForTimeout(150);
   await shot("07_memory");
 
   // 8. もぐらたたき (10さい〜)
-  await page.click("#homeBtn");
-  await page.click("#ageGrid .age-card:nth-child(4)");
-  await page.click("#gameGrid .game-card:nth-child(1)");
+  await openGame("10さい〜", 1);
   await page.waitForSelector(".mole-grid .mole-hole");
   await page.waitForTimeout(500);
   await shot("08_mole");
 
   // 9. かけざんスピード
-  await page.click("#homeBtn");
-  await page.click("#ageGrid .age-card:nth-child(4)");
-  await page.click("#gameGrid .game-card:nth-child(2)");
+  await openGame("10さい〜", 2);
   await page.waitForSelector(".question");
   await shot("09_multiply");
 
