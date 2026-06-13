@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>みんなのキッズゲーム</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- タイトル画面 -->
+    <header id="topbar" class="hidden">
+      <button id="homeBtn" class="ghost-btn">🏠 ホーム</button>
+      <div id="scoreBox" class="score-box hidden">⭐ <span id="score">0</span></div>
+    </header>
+
+    <main id="screen">
+      <!-- 年齢えらび -->
+      <section id="ageScreen" class="screen-page">
+        <h1 class="title">🎮 みんなの<br />キッズゲーム</h1>
+        <p class="subtitle">としを えらんでね</p>
+        <div class="age-grid" id="ageGrid"></div>
+      </section>
+
+      <!-- ゲームえらび -->
+      <section id="menuScreen" class="screen-page hidden">
+        <h2 id="menuTitle" class="title small"></h2>
+        <div class="game-grid" id="gameGrid"></div>
+      </section>
+
+      <!-- ゲーム本体 -->
+      <section id="gameScreen" class="screen-page hidden">
+        <h2 id="gameTitle" class="game-title"></h2>
+        <div id="gameArea" class="game-area"></div>
+        <div id="gameMessage" class="game-message"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
