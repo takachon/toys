@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>みんなのゲームランド 🎮</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- スタート画面：年齢えらび -->
+    <section id="screen-home" class="screen active">
+      <h1>🎮 みんなのゲームランド</h1>
+      <p class="lead">としを えらんでね！</p>
+      <div class="age-grid">
+        <button class="age-card" data-age="little">
+          <span class="emoji">🧸</span>
+          <span class="age-label">3〜5さい</span>
+          <span class="age-sub">いろ・どうぶつ あそび</span>
+        </button>
+        <button class="age-card" data-age="kid">
+          <span class="emoji">✏️</span>
+          <span class="age-label">6〜8さい</span>
+          <span class="age-sub">たしざん・ひきざん</span>
+        </button>
+        <button class="age-card" data-age="big">
+          <span class="emoji">🚀</span>
+          <span class="age-label">9〜12さい</span>
+          <span class="age-sub">かけざん タイムアタック</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ゲーム画面 -->
+    <section id="screen-game" class="screen">
+      <header class="game-bar">
+        <button id="btn-back" class="ghost">← もどる</button>
+        <div class="stats">
+          <span id="score">⭐ 0</span>
+          <span id="timer" class="hidden">⏱ 30</span>
+        </div>
+      </header>
+      <div id="question" class="question"></div>
+      <div id="choices" class="choices"></div>
+      <div id="feedback" class="feedback"></div>
+    </section>
+
+    <!-- けっか画面 -->
+    <section id="screen-result" class="screen">
+      <h1 id="result-title">よくできました！</h1>
+      <div id="result-emoji" class="big-emoji">🏆</div>
+      <p id="result-score" class="result-score"></p>
+      <div class="result-actions">
+        <button id="btn-again" class="primary">もういちど</button>
+        <button id="btn-home" class="ghost">としを えらびなおす</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
