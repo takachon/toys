@@ -567,6 +567,192 @@
   }
 
   // ====================================================
+  // スペシャル：つむフレンズ（ツムツム風 なぞりつなぎパズル）
+  // ====================================================
+  function gameTumFriends(area) {
+    const TYPES = ["🐻", "🐰", "🐱", "🐸", "🐤", "🐵"];
+    const RB = -1; // にじいろ（ワイルド）
+    const COLS = 6,
+      ROWS = 7;
+    let grid = [],
+      tileEls = [],
+      chain = [],
+      chainType = null,
+      dragging = false,
+      over = false,
+      time = 60;
+
+    area.innerHTML =
+      '<div class="tum-info"><span id="tumTimer">⏱ 60</span><span class="tum-hint">おなじ なかまを なぞって 3こ いじょう つなげよう！🌈は どれにでも つながるよ</span></div>' +
+      '<div class="tum-grid" id="tumGrid"></div>' +
+      '<button class="start-btn hidden" id="tumRetry">もういちど</button>';
+    const gridEl = $("tumGrid");
+
+    function randTile() {
+      return Math.random() < 0.04 ? RB : rand(TYPES.length);
+    }
+    function tileEmoji(v) {
+      return v === RB ? "🌈" : TYPES[v];
+    }
+    // 初期化
+    for (let r = 0; r < ROWS; r++) {
+      grid[r] = [];
+      for (let c = 0; c < COLS; c++) grid[r][c] = rand(TYPES.length);
+    }
+    render();
+    setMsg("なぞって つなげてね！", "good");
+
+    let timer = every(() => {
+      time--;
+      $("tumTimer").textContent = "⏱ " + time;
+      if (time <= 0) finish();
+    }, 1000);
+
+    function render() {
+      gridEl.innerHTML = "";
+      tileEls = [];
+      for (let r = 0; r < ROWS; r++) {
+        tileEls[r] = [];
+        for (let c = 0; c < COLS; c++) {
+          const el = document.createElement("div");
+          el.className = "tum";
+          el.dataset.r = r;
+          el.dataset.c = c;
+          el.textContent = tileEmoji(grid[r][c]);
+          if (grid[r][c] === RB) el.classList.add("rb");
+          gridEl.appendChild(el);
+          tileEls[r][c] = el;
+        }
+      }
+    }
+    function cellFromPoint(x, y) {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return null;
+      const t = el.closest && el.closest(".tum");
+      if (!t) return null;
+      return { r: +t.dataset.r, c: +t.dataset.c };
+    }
+    function inChain(cell) {
+      return chain.some((p) => p.r === cell.r && p.c === cell.c);
+    }
+    function adjacent(a, b) {
+      const dr = Math.abs(a.r - b.r),
+        dc = Math.abs(a.c - b.c);
+      return dr <= 1 && dc <= 1 && !(dr === 0 && dc === 0);
+    }
+    function recomputeType() {
+      chainType = null;
+      for (const p of chain) {
+        const v = grid[p.r][p.c];
+        if (v !== RB) {
+          chainType = v;
+          break;
+        }
+      }
+    }
+    function typeOK(cell) {
+      const v = grid[cell.r][cell.c];
+      return v === RB || chainType === null || v === chainType;
+    }
+    function paint() {
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++) tileEls[r][c].classList.remove("sel");
+      chain.forEach((p) => tileEls[p.r][p.c].classList.add("sel"));
+      setMsg(chain.length > 1 ? "つなげて " + chain.length + " こ 🔗" : "なぞって つなげてね！", "good");
+    }
+    function extend(cell) {
+      if (chain.length >= 2) {
+        const prev = chain[chain.length - 2];
+        if (prev.r === cell.r && prev.c === cell.c) {
+          chain.pop();
+          recomputeType();
+          paint();
+          return;
+        }
+      }
+      if (inChain(cell)) return;
+      if (!adjacent(chain[chain.length - 1], cell)) return;
+      if (!typeOK(cell)) return;
+      chain.push(cell);
+      recomputeType();
+      paint();
+    }
+    function collapse() {
+      for (let c = 0; c < COLS; c++) {
+        const col = [];
+        for (let r = ROWS - 1; r >= 0; r--) if (grid[r][c] != null) col.push(grid[r][c]);
+        for (let r = ROWS - 1, i = 0; r >= 0; r--, i++)
+          grid[r][c] = i < col.length ? col[i] : randTile();
+      }
+    }
+    function sprinkleRainbow() {
+      grid[rand(ROWS)][rand(COLS)] = RB;
+    }
+    function resolve() {
+      if (chain.length >= 3) {
+        const len = chain.length;
+        chain.forEach((p) => (grid[p.r][p.c] = null));
+        const gained = len * 10 + (len >= 5 ? 50 : 0) + (len >= 7 ? 100 : 0);
+        addScore(gained);
+        setMsg(
+          len >= 7 ? "スーパーコンボ！ 🌈 +" + gained : len >= 5 ? "コンボ！ ✨ +" + gained : "ナイス！ +" + gained,
+          "good"
+        );
+        collapse();
+        if (len >= 5) sprinkleRainbow();
+      } else {
+        setMsg("3こ いじょう つなげてね", "");
+      }
+      chain = [];
+      chainType = null;
+      render();
+    }
+    function finish() {
+      over = true;
+      clearTimers();
+      setMsg("おしまい！ スコア " + score + " 🎉", "good");
+      const btn = $("tumRetry");
+      btn.classList.remove("hidden");
+      btn.addEventListener("click", () => {
+        setScore(0);
+        gameTumFriends(area);
+      });
+    }
+
+    gridEl.addEventListener("pointerdown", (e) => {
+      if (over) return;
+      const cell = cellFromPoint(e.clientX, e.clientY);
+      if (!cell) return;
+      e.preventDefault();
+      try {
+        gridEl.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      dragging = true;
+      chain = [cell];
+      recomputeType();
+      paint();
+    });
+    gridEl.addEventListener("pointermove", (e) => {
+      if (!dragging || over) return;
+      const cell = cellFromPoint(e.clientX, e.clientY);
+      if (cell) extend(cell);
+    });
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      resolve();
+    }
+    gridEl.addEventListener("pointerup", endDrag);
+    gridEl.addEventListener("pointercancel", endDrag);
+  }
+
+  const SPECIAL_GAMES = {
+    label: "スペシャル",
+    emoji: "✨",
+    games: [{ title: "つむフレンズ", emoji: "🧩", run: gameTumFriends }],
+  };
+
+  // ====================================================
   // トランプゲーム（1人でCPUとあそぶ）
   // ====================================================
   const SUITS = [
@@ -1099,6 +1285,12 @@
       color: "linear-gradient(135deg,#6ec6ff,#4d96ff)",
       open: () => renderMenu(CARD_GAMES),
     },
+    {
+      label: "スペシャル",
+      emoji: "✨",
+      color: "linear-gradient(135deg,#f6a6ff,#9b5cff)",
+      open: () => renderMenu(SPECIAL_GAMES),
+    },
   ];
 
   function renderHome() {
@@ -1125,6 +1317,7 @@
   window.KidsGame = {
     AGE_GROUPS,
     CARD_GAMES,
+    SPECIAL_GAMES,
     CATEGORIES,
     init,
     _internal: { uniqueNums, shuffle, makeDeck, rankStr },
