@@ -44,14 +44,20 @@ function gotoCardMenu() {
   click(doc.getElementById("homeBtn"));
   click(doc.getElementById("catGrid").children[1]);
 }
+// ホーム → スペシャル → メニュー
+function gotoSpecialMenu() {
+  click(doc.getElementById("homeBtn"));
+  click(doc.getElementById("catGrid").children[2]);
+}
 
 console.log("\n== 構造テスト ==");
 ok("ホーム(カテゴリ)が表示されている", !doc.getElementById("homeScreen").classList.contains("hidden"));
-ok("カテゴリが2つ（年齢別・トランプ）", doc.getElementById("catGrid").children.length === 2);
+ok("カテゴリが3つ（年齢別・トランプ・スペシャル）", doc.getElementById("catGrid").children.length === 3);
 ok("6つの年齢グループがある", KG.AGE_GROUPS.length === 6);
 ok("1〜2さい/2〜3さいが先頭にある", KG.AGE_GROUPS[0].label === "1〜2さい" && KG.AGE_GROUPS[1].label === "2〜3さい");
 ok("各グループにゲームがある", KG.AGE_GROUPS.every((g) => g.games.length >= 2));
 ok("トランプゲームが3つある", KG.CARD_GAMES.games.length === 3);
+ok("スペシャルにつむフレンズがある", KG.SPECIAL_GAMES.games.length >= 1 && KG.SPECIAL_GAMES.games[0].title === "つむフレンズ");
 click(doc.getElementById("catGrid").children[0]); // ねんれいべつへ
 ok("年齢えらびに遷移する", !doc.getElementById("ageScreen").classList.contains("hidden"));
 ok("年齢カードが6つ描画された", doc.getElementById("ageGrid").children.length === 6);
@@ -87,6 +93,14 @@ KG.CARD_GAMES.games.forEach((game, idx) => {
   const area = doc.getElementById("gameArea");
   ok("トランプ / " + game.title + ": 起動して要素描画", area.children.length > 0 && !!doc.getElementById("cstatus"));
 });
+
+// スペシャル：つむフレンズが 6x7=42 タイルで描画される
+console.log("\n== スペシャル：つむフレンズ ==");
+gotoSpecialMenu();
+click(doc.getElementById("gameGrid").children[0]); // つむフレンズ
+ok("つむフレンズ起動", !!doc.getElementById("tumGrid"));
+ok("タイルが42こ（6x7）描画", doc.getElementById("tumGrid").children.length === 42);
+ok("タイマー表示がある", !!doc.getElementById("tumTimer"));
 
 // 7ならべ：7が自動配置され、4スート分の行と手札が描画される
 console.log("\n== トランプ：7ならべ ==");

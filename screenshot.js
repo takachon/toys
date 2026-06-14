@@ -199,6 +199,59 @@ const url = "http://localhost:8099/index.html";
   console.log("   ババぬき: 自分の手札 " + youBefore + " → " + youAfter + "（ひいた結果）");
   await shot("14b_oldmaid_drawn");
 
+  // 15. スペシャル：つむフレンズ — 同じ仲間を3つなぞって消す
+  await page.click("#homeBtn");
+  await page.click("#catGrid .age-card:nth-child(3)"); // スペシャル
+  await page.waitForSelector("#gameGrid .game-card");
+  await page.click("#gameGrid .game-card:nth-child(1)"); // つむフレンズ
+  await page.waitForSelector("#tumGrid .tum");
+  await shot("15a_tum");
+  // 同じ絵文字が隣り合う3連を探す
+  const chainPath = await page.evaluate(() => {
+    const COLS = 6, ROWS = 7;
+    const tiles = [...document.querySelectorAll("#tumGrid .tum")];
+    const at = (r, c) => tiles[r * COLS + c];
+    const emo = (r, c) => at(r, c).textContent;
+    const center = (el) => {
+      const b = el.getBoundingClientRect();
+      return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+    };
+    const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    function dfs(r, c, type, path, visited) {
+      if (path.length === 3) return path.slice();
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nc < 0 || nr >= ROWS || nc >= COLS) continue;
+        const key = nr + "-" + nc;
+        if (visited.has(key) || emo(nr, nc) !== type) continue;
+        visited.add(key); path.push([nr, nc]);
+        const res = dfs(nr, nc, type, path, visited);
+        if (res) return res;
+        path.pop(); visited.delete(key);
+      }
+      return null;
+    }
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++) {
+        const t = emo(r, c);
+        if (t === "🌈") continue;
+        const res = dfs(r, c, t, [[r, c]], new Set([r + "-" + c]));
+        if (res) return res.map(([rr, cc]) => center(at(rr, cc)));
+      }
+    return null;
+  });
+  let tumScore = "0";
+  if (chainPath) {
+    await page.mouse.move(chainPath[0].x, chainPath[0].y);
+    await page.mouse.down();
+    for (const p of chainPath.slice(1)) await page.mouse.move(p.x, p.y, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    tumScore = await page.textContent("#score");
+  }
+  console.log("   つむフレンズ: 3つなぎ → スコア=" + tumScore + (chainPath ? "" : "（3連が見つからずスキップ）"));
+  await shot("15b_tum_chained");
+
   await browser.close();
 
   console.log("\n--- ブラウザコンソール ---");
