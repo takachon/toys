@@ -113,6 +113,26 @@ const url = "http://localhost:8099/index.html";
   await page.waitForSelector(".question");
   await shot("09_multiply");
 
+  // 10. ピアノタイル — スタートして黒タイルをタップ
+  await openGame("10さい〜", 3);
+  await page.waitForSelector("#pstart");
+  await shot("10a_piano_start");
+  await page.click("#pstart");
+  await page.waitForSelector(".piano-tile");
+  await page.waitForTimeout(400);
+  // 一番下にある黒タイルをタップしてスコアを得る
+  const before = await page.textContent("#score");
+  await page.evaluate(() => {
+    const tiles = [...document.querySelectorAll(".piano-tile")];
+    // 一番下（top が最大）のタイルをタップ
+    tiles.sort((a, b) => parseFloat(b.style.top) - parseFloat(a.style.top));
+    tiles[0].dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  const after = await page.textContent("#score");
+  console.log("   ピアノタイル: タップ前=" + before + " → タップ後=" + after);
+  await shot("10b_piano_play");
+
   await browser.close();
 
   console.log("\n--- ブラウザコンソール ---");

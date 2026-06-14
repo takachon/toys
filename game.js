@@ -430,9 +430,112 @@
     round();
   }
 
+  // --- 9. ピアノタイル（10さい〜）反射神経 ---
+  // 上から落ちてくる黒いタイルを、下に着くまえにタップ！
+  function gamePianoTiles(area) {
+    const COLS = 4;
+    const BOARD_H = 420; // CSS の .piano-board と一致
+    const TILE_H = 105; // 画面に約4列ぶん
+    area.innerHTML =
+      '<div class="piano-board" id="pboard">' +
+      '<div class="piano-overlay" id="poverlay">' +
+      '<div class="piano-lead">くろいタイルを<br>タップ！</div>' +
+      '<button class="start-btn" id="pstart">▶ スタート</button>' +
+      "</div></div>";
+    const board = $("pboard");
+
+    let rows = [];
+    let speed = 2.2;
+    let playing = false;
+
+    function spawnRow(y) {
+      const col = rand(COLS);
+      const el = document.createElement("div");
+      el.className = "piano-tile";
+      el.style.left = col * (100 / COLS) + "%";
+      el.style.top = y + "px";
+      const row = { y: y, el: el, tapped: false };
+      el.addEventListener("pointerdown", function (e) {
+        e.stopPropagation();
+        tap(row);
+      });
+      board.appendChild(el);
+      rows.push(row);
+    }
+
+    function tap(row) {
+      if (!playing || row.tapped) return;
+      row.tapped = true;
+      addScore(1);
+      row.el.classList.add("hit");
+      rows = rows.filter(function (r) {
+        return r !== row;
+      });
+      speed += 0.05; // タップするほど少しずつ速く
+      later(function () {
+        if (row.el.parentNode) row.el.remove();
+      }, 120);
+    }
+
+    function tick() {
+      speed += 0.004; // じわじわ加速
+      let missed = false;
+      rows.forEach(function (r) {
+        r.y += speed;
+        r.el.style.top = r.y + "px";
+        if (r.y > BOARD_H && !r.tapped) missed = true;
+      });
+      if (missed) {
+        gameOver();
+        return;
+      }
+      const top = rows.length
+        ? Math.min.apply(
+            null,
+            rows.map(function (r) {
+              return r.y;
+            })
+          )
+        : BOARD_H;
+      if (top >= 0) spawnRow(top - TILE_H);
+    }
+
+    function gameOver() {
+      playing = false;
+      clearTimers();
+      setMsg("おしまい！ スコア " + score, "good");
+      const ov = document.createElement("div");
+      ov.className = "piano-overlay";
+      ov.id = "poverlay";
+      ov.innerHTML =
+        '<div class="piano-score">スコア ' +
+        score +
+        "</div>" +
+        '<button class="start-btn" id="pstart">もういちど</button>';
+      board.appendChild(ov);
+      ov.querySelector("#pstart").addEventListener("click", start);
+    }
+
+    function start() {
+      rows.forEach(function (r) {
+        if (r.el.parentNode) r.el.remove();
+      });
+      rows = [];
+      board.innerHTML = "";
+      speed = 2.2;
+      playing = true;
+      setScore(0);
+      setMsg("くろいタイルを タップ！", "good");
+      // したから うえへ タイルをならべる
+      for (let y = BOARD_H - TILE_H; y > -TILE_H; y -= TILE_H) spawnRow(y);
+      every(tick, 25);
+    }
+
+    $("pstart").addEventListener("click", start);
+  }
+
   // ---- 数字選択肢の共通ビルダー ----
-  function uniqueNums(correct, count, min, max) {
-    const set = new Set([correct]);
+  function uniqueNums(correct, count, min, max) {    const set = new Set([correct]);
     let guard = 0;
     while (set.size < count && guard++ < 200) {
       const delta = 1 + rand(5);
@@ -525,6 +628,7 @@
       games: [
         { title: "もぐらたたき", emoji: "🐹", run: gameMole },
         { title: "かけざんスピード", emoji: "✖️", run: gameMulti },
+        { title: "ピアノタイル", emoji: "🎹", run: gamePianoTiles },
       ],
     },
   ];
