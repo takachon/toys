@@ -16,6 +16,10 @@
 
 html, body {
   height: 100%;
+  /* ダブルタップ拡大を禁止（クリックは通常どおり） */
+  touch-action: manipulation;
+  /* 端のバウンス・引っぱり更新を抑制 */
+  overscroll-behavior: none;
 }
 
 body {

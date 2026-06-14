@@ -1307,8 +1307,41 @@
     });
   }
 
+  // ---- 拡大縮小の禁止 ----
+  // viewport と touch-action でだいたい防げるが、iOS Safari は
+  // user-scalable=no を無視するので、ピンチ操作を JS でも止める。
+  function preventZoom() {
+    // iOS Safari のピンチズーム
+    ["gesturestart", "gesturechange", "gestureend"].forEach((ev) =>
+      document.addEventListener(ev, (e) => e.preventDefault())
+    );
+    // 2本指でのピンチ（汎用）
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (e.touches && e.touches.length > 1) e.preventDefault();
+      },
+      { passive: false }
+    );
+    // デスクトップの Ctrl+ホイール / トラックパッドのピンチ拡大
+    document.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey) e.preventDefault();
+      },
+      { passive: false }
+    );
+    // Ctrl/⌘ + +/-/0 のキーボードズーム
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && ["+", "-", "=", "0"].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+  }
+
   // ---- 初期化 ----
   function init() {
+    preventZoom();
     $("homeBtn").addEventListener("click", renderHome);
     renderHome();
   }
