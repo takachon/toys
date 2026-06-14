@@ -30,11 +30,30 @@ window.document.dispatchEvent(new window.Event("DOMContentLoaded"));
 
 const KG = window.KidsGame;
 
+function click(el) {
+  el.dispatchEvent(new window.Event("click", { bubbles: true }));
+}
+// ホーム(カテゴリ) → ねんれいべつ → 年齢カード → メニュー
+function gotoAgeMenu(gi) {
+  click(doc.getElementById("homeBtn"));
+  click(doc.getElementById("catGrid").children[0]);
+  click(doc.getElementById("ageGrid").children[gi]);
+}
+// ホーム → トランプゲーム → メニュー
+function gotoCardMenu() {
+  click(doc.getElementById("homeBtn"));
+  click(doc.getElementById("catGrid").children[1]);
+}
+
 console.log("\n== 構造テスト ==");
+ok("ホーム(カテゴリ)が表示されている", !doc.getElementById("homeScreen").classList.contains("hidden"));
+ok("カテゴリが2つ（年齢別・トランプ）", doc.getElementById("catGrid").children.length === 2);
 ok("6つの年齢グループがある", KG.AGE_GROUPS.length === 6);
 ok("1〜2さい/2〜3さいが先頭にある", KG.AGE_GROUPS[0].label === "1〜2さい" && KG.AGE_GROUPS[1].label === "2〜3さい");
 ok("各グループにゲームがある", KG.AGE_GROUPS.every((g) => g.games.length >= 2));
-ok("年齢えらび画面が表示されている", !doc.getElementById("ageScreen").classList.contains("hidden"));
+ok("トランプゲームが3つある", KG.CARD_GAMES.games.length === 3);
+click(doc.getElementById("catGrid").children[0]); // ねんれいべつへ
+ok("年齢えらびに遷移する", !doc.getElementById("ageScreen").classList.contains("hidden"));
 ok("年齢カードが6つ描画された", doc.getElementById("ageGrid").children.length === 6);
 
 console.log("\n== uniqueNums ロジック ==");
@@ -42,33 +61,60 @@ const u = KG._internal.uniqueNums(5, 3, 0, 40);
 ok("正解を含む3つの選択肢", u.length === 3 && u.includes(5));
 ok("選択肢に重複がない", new Set(u).size === u.length);
 
-function click(el) {
-  el.dispatchEvent(new window.Event("click", { bubbles: true }));
-}
+console.log("\n== トランプ：デッキ ==");
+ok("52まいのデッキ", KG._internal.makeDeck().length === 52);
+ok("ランク表記 7", KG._internal.rankStr(7) === "7");
 
 // 年齢グループ→ゲームを順番に起動してクラッシュしないか確認
 console.log("\n== 全ゲーム起動テスト ==");
 KG.AGE_GROUPS.forEach((g, gi) => {
-  click(doc.getElementById("ageGrid").children[gi]); // 年齢選択
+  gotoAgeMenu(gi);
   const menuVisible = !doc.getElementById("menuScreen").classList.contains("hidden");
   ok(g.label + ": メニュー表示", menuVisible);
   g.games.forEach((game, idx) => {
-    // メニューに戻る（ホーム→再選択）
-    click(doc.getElementById("homeBtn"));
-    click(doc.getElementById("ageGrid").children[gi]);
+    gotoAgeMenu(gi);
     click(doc.getElementById("gameGrid").children[idx]);
     const area = doc.getElementById("gameArea");
     ok(g.label + " / " + game.title + ": 起動して要素描画", area.children.length > 0);
   });
 });
 
+// トランプゲームの起動テスト
+console.log("\n== トランプゲーム起動テスト ==");
+KG.CARD_GAMES.games.forEach((game, idx) => {
+  gotoCardMenu();
+  click(doc.getElementById("gameGrid").children[idx]);
+  const area = doc.getElementById("gameArea");
+  ok("トランプ / " + game.title + ": 起動して要素描画", area.children.length > 0 && !!doc.getElementById("cstatus"));
+});
+
+// 7ならべ：7が自動配置され、4スート分の行と手札が描画される
+console.log("\n== トランプ：7ならべ ==");
+gotoCardMenu();
+click(doc.getElementById("gameGrid").children[1]); // 7ならべ
+ok("ばんが4スート分ある", doc.getElementById("svBoard").children.length === 4);
+ok("各スートに7が配置済み", [...doc.getElementById("svBoard").children].every((row) => row.querySelectorAll(".card").length >= 1));
+ok("自分の手札がある", doc.getElementById("svHand").children.length > 0);
+
+// ババぬき：両者の手札が描画される
+console.log("\n== トランプ：ババぬき ==");
+gotoCardMenu();
+click(doc.getElementById("gameGrid").children[2]); // ババぬき
+ok("CPUの手札（うらむき）がある", doc.getElementById("cpuHand").children.length > 0);
+ok("CPU手札はすべて裏向き", [...doc.getElementById("cpuHand").children].every((c) => c.classList.contains("back")));
+
+// しんけいすいじゃく：16枚のカードが描画される
+console.log("\n== トランプ：しんけいすいじゃく ==");
+gotoCardMenu();
+click(doc.getElementById("gameGrid").children[0]); // しんけいすいじゃく
+ok("カードが16まい", doc.getElementById("mg").children.length === 16);
+
 // 年齢ラベルからカードの位置を引く
 const ageIndex = (label) => KG.AGE_GROUPS.findIndex((g) => g.label === label);
 
 // けいさんチャレンジで正解を押すとスコアが増えるか
 console.log("\n== あそびテスト（けいさん）==");
-click(doc.getElementById("homeBtn"));
-click(doc.getElementById("ageGrid").children[ageIndex("7〜9さい")]);
+gotoAgeMenu(ageIndex("7〜9さい"));
 click(doc.getElementById("gameGrid").children[0]); // けいさんチャレンジ
 const q = doc.querySelector(".question").textContent; // "a + b = ?"
 const m = q.match(/(\d+)\s*([+\-])\s*(\d+)/);
@@ -86,8 +132,7 @@ ok("正解でスコアが増える (" + before + "→" + after + ")", after === 
 
 // 色あわせで正しい色を押すとスコアが増える
 console.log("\n== あそびテスト（いろあわせ）==");
-click(doc.getElementById("homeBtn"));
-click(doc.getElementById("ageGrid").children[ageIndex("3〜4さい")]);
+gotoAgeMenu(ageIndex("3〜4さい"));
 click(doc.getElementById("gameGrid").children[1]); // いろあわせ
 const hexToRgb = (h) => {
   const n = parseInt(h.slice(1), 16);

@@ -45,11 +45,11 @@
   // ---- 画面遷移 ----
   function showPage(pageId, showScore) {
     clearTimers();
-    ["ageScreen", "menuScreen", "gameScreen"].forEach((p) =>
+    ["homeScreen", "ageScreen", "menuScreen", "gameScreen"].forEach((p) =>
       $(p).classList.add("hidden")
     );
     $(pageId).classList.remove("hidden");
-    $("topbar").classList.toggle("hidden", pageId === "ageScreen");
+    $("topbar").classList.toggle("hidden", pageId === "homeScreen");
     $("scoreBox").classList.toggle("hidden", !showScore);
   }
 
@@ -430,9 +430,112 @@
     round();
   }
 
+  // --- 9. ピアノタイル（10さい〜）反射神経 ---
+  // 上から落ちてくる黒いタイルを、下に着くまえにタップ！
+  function gamePianoTiles(area) {
+    const COLS = 4;
+    const BOARD_H = 420; // CSS の .piano-board と一致
+    const TILE_H = 105; // 画面に約4列ぶん
+    area.innerHTML =
+      '<div class="piano-board" id="pboard">' +
+      '<div class="piano-overlay" id="poverlay">' +
+      '<div class="piano-lead">くろいタイルを<br>タップ！</div>' +
+      '<button class="start-btn" id="pstart">▶ スタート</button>' +
+      "</div></div>";
+    const board = $("pboard");
+
+    let rows = [];
+    let speed = 2.2;
+    let playing = false;
+
+    function spawnRow(y) {
+      const col = rand(COLS);
+      const el = document.createElement("div");
+      el.className = "piano-tile";
+      el.style.left = col * (100 / COLS) + "%";
+      el.style.top = y + "px";
+      const row = { y: y, el: el, tapped: false };
+      el.addEventListener("pointerdown", function (e) {
+        e.stopPropagation();
+        tap(row);
+      });
+      board.appendChild(el);
+      rows.push(row);
+    }
+
+    function tap(row) {
+      if (!playing || row.tapped) return;
+      row.tapped = true;
+      addScore(1);
+      row.el.classList.add("hit");
+      rows = rows.filter(function (r) {
+        return r !== row;
+      });
+      speed += 0.05; // タップするほど少しずつ速く
+      later(function () {
+        if (row.el.parentNode) row.el.remove();
+      }, 120);
+    }
+
+    function tick() {
+      speed += 0.004; // じわじわ加速
+      let missed = false;
+      rows.forEach(function (r) {
+        r.y += speed;
+        r.el.style.top = r.y + "px";
+        if (r.y > BOARD_H && !r.tapped) missed = true;
+      });
+      if (missed) {
+        gameOver();
+        return;
+      }
+      const top = rows.length
+        ? Math.min.apply(
+            null,
+            rows.map(function (r) {
+              return r.y;
+            })
+          )
+        : BOARD_H;
+      if (top >= 0) spawnRow(top - TILE_H);
+    }
+
+    function gameOver() {
+      playing = false;
+      clearTimers();
+      setMsg("おしまい！ スコア " + score, "good");
+      const ov = document.createElement("div");
+      ov.className = "piano-overlay";
+      ov.id = "poverlay";
+      ov.innerHTML =
+        '<div class="piano-score">スコア ' +
+        score +
+        "</div>" +
+        '<button class="start-btn" id="pstart">もういちど</button>';
+      board.appendChild(ov);
+      ov.querySelector("#pstart").addEventListener("click", start);
+    }
+
+    function start() {
+      rows.forEach(function (r) {
+        if (r.el.parentNode) r.el.remove();
+      });
+      rows = [];
+      board.innerHTML = "";
+      speed = 2.2;
+      playing = true;
+      setScore(0);
+      setMsg("くろいタイルを タップ！", "good");
+      // したから うえへ タイルをならべる
+      for (let y = BOARD_H - TILE_H; y > -TILE_H; y -= TILE_H) spawnRow(y);
+      every(tick, 25);
+    }
+
+    $("pstart").addEventListener("click", start);
+  }
+
   // ---- 数字選択肢の共通ビルダー ----
-  function uniqueNums(correct, count, min, max) {
-    const set = new Set([correct]);
+  function uniqueNums(correct, count, min, max) {    const set = new Set([correct]);
     let guard = 0;
     while (set.size < count && guard++ < 200) {
       const delta = 1 + rand(5);
@@ -462,6 +565,419 @@
       ch.appendChild(b);
     });
   }
+
+  // ====================================================
+  // トランプゲーム（1人でCPUとあそぶ）
+  // ====================================================
+  const SUITS = [
+    { s: "♠", red: false },
+    { s: "♥", red: true },
+    { s: "♦", red: true },
+    { s: "♣", red: false },
+  ];
+  const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+  function makeDeck() {
+    const d = [];
+    for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) d.push({ suit: s, rank: r });
+    return d;
+  }
+  function rankStr(r) {
+    return RANKS[r - 1];
+  }
+  function isRed(c) {
+    return !c.joker && SUITS[c.suit].red;
+  }
+  function cardInner(c) {
+    if (c.joker) return '<span class="cr">JK</span><span class="cs">🤡</span>';
+    return (
+      '<span class="cr">' + rankStr(c.rank) + '</span><span class="cs">' + SUITS[c.suit].s + "</span>"
+    );
+  }
+  function cardEl(card, faceUp) {
+    const el = document.createElement("div");
+    if (faceUp) {
+      el.className = "card up" + (isRed(card) ? " red" : "");
+      el.innerHTML = cardInner(card);
+    } else {
+      el.className = "card back";
+    }
+    return el;
+  }
+  function sortHand(arr) {
+    return arr.slice().sort((a, b) => {
+      if (a.joker) return 1;
+      if (b.joker) return -1;
+      if (a.suit !== b.suit) return a.suit - b.suit;
+      return a.rank - b.rank;
+    });
+  }
+  function status(html) {
+    const el = document.getElementById("cstatus");
+    if (el) el.innerHTML = html;
+  }
+
+  // --- しんけいすいじゃく（神経衰弱）vs CPU ---
+  function gameMemoryCards(area) {
+    const base = shuffle(makeDeck()).slice(0, 8); // 8しゅるい
+    const deck = shuffle(
+      base.concat(base.map((c) => ({ suit: c.suit, rank: c.rank }))) // 各2まい
+    );
+    const cards = [];
+    let firstIdx = null,
+      lock = false,
+      turn = "you",
+      youPairs = 0,
+      cpuPairs = 0,
+      matched = 0;
+    const seen = {}; // CPUの きおく： key -> Set(index)
+
+    area.innerHTML =
+      '<div class="card-status" id="cstatus"></div>' +
+      '<div class="card-grid-4" id="mg"></div>';
+    const mg = $("mg");
+    deck.forEach((card, i) => {
+      const el = document.createElement("div");
+      el.className = "card back mcard";
+      el.addEventListener("click", () => playerPick(i));
+      mg.appendChild(el);
+      cards.push({ card: card, el: el, matched: false });
+    });
+    update();
+    setMsg("カードを 2まい めくってね", "good");
+
+    function key(c) {
+      return c.suit + "-" + c.rank;
+    }
+    function update() {
+      status("あなた <b>" + youPairs + "</b> ペア　VS　CPU <b>" + cpuPairs + "</b> ペア");
+    }
+    function remember(i) {
+      const k = key(cards[i].card);
+      (seen[k] = seen[k] || new Set()).add(i);
+    }
+    function faceUp(i) {
+      const c = cards[i];
+      c.el.className = "card up mcard" + (isRed(c.card) ? " red" : "");
+      c.el.innerHTML = cardInner(c.card);
+      remember(i);
+    }
+    function faceDown(i) {
+      const c = cards[i];
+      if (c.matched) return;
+      c.el.className = "card back mcard";
+      c.el.innerHTML = "";
+    }
+    function playerPick(i) {
+      if (turn !== "you" || lock) return;
+      const c = cards[i];
+      if (c.matched || c.el.classList.contains("up")) return;
+      faceUp(i);
+      if (firstIdx === null) {
+        firstIdx = i;
+        return;
+      }
+      evaluate(firstIdx, i, "you");
+    }
+    function evaluate(a, b, who) {
+      lock = true;
+      const ca = cards[a].card,
+        cb = cards[b].card;
+      const isMatch = ca.suit === cb.suit && ca.rank === cb.rank;
+      later(
+        () => {
+          if (isMatch) {
+            cards[a].matched = cards[b].matched = true;
+            cards[a].el.classList.add("matched");
+            cards[b].el.classList.add("matched");
+            matched += 2;
+            if (who === "you") youPairs++;
+            else cpuPairs++;
+            update();
+            firstIdx = null;
+            lock = false;
+            if (matched === cards.length) return finish();
+            if (who === "you") setMsg("そろった！ もう1かい！", "good");
+            else cpuTurn();
+          } else {
+            faceDown(a);
+            faceDown(b);
+            firstIdx = null;
+            lock = false;
+            turn = who === "you" ? "cpu" : "you";
+            if (turn === "cpu") cpuTurn();
+            else setMsg("あなたの ばん！", "good");
+          }
+        },
+        isMatch ? 500 : 850
+      );
+    }
+    function cpuChoose() {
+      const avail = cards.map((c, i) => i).filter((i) => !cards[i].matched);
+      for (const k in seen) {
+        const idxs = [...seen[k]].filter((i) => !cards[i].matched);
+        if (idxs.length >= 2 && Math.random() < 0.85) return [idxs[0], idxs[1]];
+      }
+      const first = pick(avail);
+      const known = [...(seen[key(cards[first].card)] || [])].filter(
+        (i) => !cards[i].matched && i !== first
+      );
+      let second;
+      if (known.length && Math.random() < 0.85) second = known[0];
+      else second = pick(avail.filter((i) => i !== first));
+      return [first, second];
+    }
+    function cpuTurn() {
+      turn = "cpu";
+      lock = true;
+      setMsg("CPUの ばん…", "");
+      later(() => {
+        const [a, b] = cpuChoose();
+        faceUp(a);
+        later(() => {
+          faceUp(b);
+          evaluate(a, b, "cpu");
+        }, 650);
+      }, 650);
+    }
+    function finish() {
+      const msg =
+        youPairs > cpuPairs
+          ? "あなたの かち！ 🏆"
+          : youPairs < cpuPairs
+          ? "CPUの かち！ つぎは がんばろう"
+          : "ひきわけ！ 🤝";
+      setMsg(msg, youPairs >= cpuPairs ? "good" : "bad");
+    }
+  }
+
+  // --- ババぬき（Old Maid）vs CPU ---
+  function gameOldMaid(area) {
+    let deck = shuffle(makeDeck());
+    deck.push({ joker: true });
+    deck = shuffle(deck);
+    let you = [],
+      cpu = [];
+    deck.forEach((c, i) => (i % 2 === 0 ? you : cpu).push(c));
+    removePairs(you);
+    removePairs(cpu);
+    let turn = "you",
+      over = false;
+
+    area.innerHTML =
+      '<div class="card-status" id="cstatus"></div>' +
+      '<div class="om-label">CPUの て（うらむき）</div>' +
+      '<div class="hand" id="cpuHand"></div>' +
+      '<div class="om-mid" id="omMid"></div>' +
+      '<div class="om-label">あなたの て</div>' +
+      '<div class="hand" id="youHand"></div>';
+    render();
+    setMsg("CPUの カードを 1まい えらんでね", "good");
+
+    function removePairs(hand) {
+      const byRank = {};
+      hand.forEach((c) => {
+        if (c.joker) return;
+        (byRank[c.rank] = byRank[c.rank] || []).push(c);
+      });
+      const remove = new Set();
+      Object.keys(byRank).forEach((r) => {
+        const arr = byRank[r];
+        const n = Math.floor(arr.length / 2) * 2;
+        for (let i = 0; i < n; i++) remove.add(arr[i]);
+      });
+      for (let i = hand.length - 1; i >= 0; i--) if (remove.has(hand[i])) hand.splice(i, 1);
+    }
+    function render() {
+      status("あなた <b>" + you.length + "</b>まい　CPU <b>" + cpu.length + "</b>まい");
+      const yh = $("youHand");
+      yh.innerHTML = "";
+      sortHand(you).forEach((c) => yh.appendChild(cardEl(c, true)));
+      const ch = $("cpuHand");
+      ch.innerHTML = "";
+      if (!over) cpu = shuffle(cpu); // ブラインドに する
+      cpu.forEach((c, i) => {
+        const el = cardEl(c, over);
+        if (!over) {
+          el.classList.add("pick");
+          el.addEventListener("click", () => youDraw(i));
+        }
+        ch.appendChild(el);
+      });
+    }
+    function youDraw(i) {
+      if (turn !== "you" || over) return;
+      const card = cpu.splice(i, 1)[0];
+      you.push(card);
+      removePairs(you);
+      render();
+      if (end()) return;
+      turn = "cpu";
+      setMsg("CPUの ばん…", "");
+      later(cpuDraw, 1000);
+    }
+    function cpuDraw() {
+      if (over) return;
+      const card = you.splice(rand(you.length), 1)[0];
+      cpu.push(card);
+      removePairs(cpu);
+      render();
+      if (end()) return;
+      turn = "you";
+      setMsg("CPUの カードを 1まい えらんでね", "good");
+    }
+    function end() {
+      if (you.length === 0) {
+        over = true;
+        render();
+        setMsg("あがり！ あなたの かち！ 🏆", "good");
+        return true;
+      }
+      if (cpu.length === 0) {
+        over = true;
+        render();
+        setMsg("CPUが あがり… ジョーカーが のこって まけ", "bad");
+        return true;
+      }
+      return false;
+    }
+  }
+
+  // --- 7ならべ（Sevens）vs CPU3人 ---
+  function gameSevens(area) {
+    const deck = shuffle(makeDeck());
+    const hands = [[], [], [], []];
+    deck.forEach((c, i) => hands[i % 4].push(c));
+    const board = SUITS.map(() => ({ min: null, max: null }));
+    // 7を じどうで ならべる
+    for (let p = 0; p < 4; p++) {
+      for (let i = hands[p].length - 1; i >= 0; i--) {
+        if (hands[p][i].rank === 7) {
+          const c = hands[p].splice(i, 1)[0];
+          board[c.suit].min = board[c.suit].max = 7;
+        }
+      }
+    }
+    let current = 0,
+      over = false;
+
+    area.innerHTML =
+      '<div class="card-status" id="cstatus"></div>' +
+      '<div class="sv-board" id="svBoard"></div>' +
+      '<div class="sv-hand-label">あなたの て（おけるカードは みどりわく）</div>' +
+      '<div class="hand" id="svHand"></div>' +
+      '<div class="sv-controls"><button class="start-btn" id="svPass">パス</button></div>';
+    $("svPass").addEventListener("click", doPass);
+    render();
+    setMsg("あなたの ばん！ おけるカードを タップ", "good");
+
+    function playable(c) {
+      const b = board[c.suit];
+      if (c.rank === 7) return b.max === null;
+      if (b.max === null) return false;
+      return c.rank === b.min - 1 || c.rank === b.max + 1;
+    }
+    function place(card, who) {
+      const h = hands[who];
+      const idx = h.indexOf(card);
+      if (idx >= 0) h.splice(idx, 1);
+      const b = board[card.suit];
+      if (card.rank === 7) {
+        b.min = b.max = 7;
+      } else if (card.rank < 7) b.min = card.rank;
+      else b.max = card.rank;
+    }
+    function render() {
+      status(
+        "あなた " +
+          hands[0].length +
+          " / CPU① " +
+          hands[1].length +
+          " / CPU② " +
+          hands[2].length +
+          " / CPU③ " +
+          hands[3].length
+      );
+      const bd = $("svBoard");
+      bd.innerHTML = "";
+      SUITS.forEach((su, si) => {
+        const row = document.createElement("div");
+        row.className = "sv-row";
+        const lab = document.createElement("div");
+        lab.className = "sv-suit" + (su.red ? " red" : "");
+        lab.textContent = su.s;
+        row.appendChild(lab);
+        const b = board[si];
+        if (b.max !== null)
+          for (let r = b.min; r <= b.max; r++) {
+            const el = cardEl({ suit: si, rank: r }, true);
+            el.classList.add("mini");
+            row.appendChild(el);
+          }
+        bd.appendChild(row);
+      });
+      const hd = $("svHand");
+      hd.innerHTML = "";
+      sortHand(hands[0]).forEach((c) => {
+        const el = cardEl(c, true);
+        el.classList.add("mini");
+        if (current === 0 && !over && playable(c)) {
+          el.classList.add("pick");
+          el.addEventListener("click", () => playerPlay(c));
+        } else el.classList.add("dim");
+        hd.appendChild(el);
+      });
+    }
+    function playerPlay(c) {
+      if (current !== 0 || over || !playable(c)) return;
+      place(c, 0);
+      advance();
+    }
+    function doPass() {
+      if (current !== 0 || over) return;
+      advance();
+    }
+    function advance() {
+      if (checkWin()) return;
+      current = (current + 1) % 4;
+      render();
+      if (current === 0) setMsg("あなたの ばん！ おけるカードを タップ", "good");
+      else {
+        setMsg("CPU" + "①②③"[current - 1] + " の ばん…", "");
+        later(cpuPlay, 800);
+      }
+    }
+    function cpuPlay() {
+      if (over) return;
+      const opts = hands[current].filter(playable);
+      if (opts.length) place(pick(opts), current);
+      advance();
+    }
+    function checkWin() {
+      for (let p = 0; p < 4; p++) {
+        if (hands[p].length === 0) {
+          over = true;
+          render();
+          setMsg(
+            p === 0 ? "あがり！ あなたの かち！ 🏆" : "CPU" + "①②③"[p - 1] + " の かち！",
+            p === 0 ? "good" : "bad"
+          );
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  const CARD_GAMES = {
+    label: "トランプゲーム",
+    emoji: "🃏",
+    games: [
+      { title: "しんけいすいじゃく", emoji: "🃏", run: gameMemoryCards, hideScore: true },
+      { title: "7ならべ", emoji: "7️⃣", run: gameSevens, hideScore: true },
+      { title: "ババぬき", emoji: "🤡", run: gameOldMaid, hideScore: true },
+    ],
+  };
 
   // ====================================================
   // データ：年齢グループとゲーム
@@ -525,6 +1041,7 @@
       games: [
         { title: "もぐらたたき", emoji: "🐹", run: gameMole },
         { title: "かけざんスピード", emoji: "✖️", run: gameMulti },
+        { title: "ピアノタイル", emoji: "🎹", run: gamePianoTiles },
       ],
     },
   ];
@@ -562,20 +1079,56 @@
 
   function renderGame(game) {
     setScore(0);
-    showPage("gameScreen", true);
+    showPage("gameScreen", !game.hideScore);
     $("gameTitle").textContent = game.emoji + " " + game.title;
     setMsg("");
     game.run($("gameArea"));
   }
 
+  // ---- カテゴリ（ホーム）----
+  const CATEGORIES = [
+    {
+      label: "ねんれいべつ",
+      emoji: "👶",
+      color: "linear-gradient(135deg,#ff9a9e,#fecfef)",
+      open: () => renderAgeScreen(),
+    },
+    {
+      label: "トランプゲーム",
+      emoji: "🃏",
+      color: "linear-gradient(135deg,#6ec6ff,#4d96ff)",
+      open: () => renderMenu(CARD_GAMES),
+    },
+  ];
+
+  function renderHome() {
+    showPage("homeScreen", false);
+    const grid = $("catGrid");
+    grid.innerHTML = "";
+    CATEGORIES.forEach((c) => {
+      const card = document.createElement("button");
+      card.className = "age-card";
+      card.style.background = c.color;
+      card.innerHTML = '<span class="emoji">' + c.emoji + "</span>" + c.label;
+      card.addEventListener("click", c.open);
+      grid.appendChild(card);
+    });
+  }
+
   // ---- 初期化 ----
   function init() {
-    $("homeBtn").addEventListener("click", renderAgeScreen);
-    renderAgeScreen();
+    $("homeBtn").addEventListener("click", renderHome);
+    renderHome();
   }
 
   // テスト用にエクスポート
-  window.KidsGame = { AGE_GROUPS, init, _internal: { uniqueNums, shuffle } };
+  window.KidsGame = {
+    AGE_GROUPS,
+    CARD_GAMES,
+    CATEGORIES,
+    init,
+    _internal: { uniqueNums, shuffle, makeDeck, rankStr },
+  };
 
   document.addEventListener("DOMContentLoaded", init);
 })();

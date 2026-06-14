@@ -334,6 +334,190 @@ body {
   opacity: 0.6;
 }
 
+/* カテゴリ（ホーム） */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  width: 100%;
+  max-width: 460px;
+}
+
+/* トランプゲーム共通 */
+.card-status {
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 8px;
+}
+.card-status b {
+  color: var(--pink);
+  font-size: 1.3rem;
+}
+.card {
+  width: 48px;
+  height: 66px;
+  border-radius: 8px;
+  background: #fff;
+  border: 2px solid #999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+.card.up {
+  color: #222;
+}
+.card.red {
+  color: #e23b3b;
+}
+.card .cr {
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+.card .cs {
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+.card.back {
+  background: repeating-linear-gradient(
+    45deg,
+    #6ec6ff 0,
+    #6ec6ff 6px,
+    #4d96ff 6px,
+    #4d96ff 12px
+  );
+  border-color: #4d96ff;
+}
+.card.mini {
+  width: 40px;
+  height: 56px;
+}
+.card.mcard {
+  width: 60px;
+  height: 84px;
+  cursor: pointer;
+}
+.card.pick {
+  cursor: pointer;
+  border-color: var(--green);
+  box-shadow: 0 3px 0 var(--green);
+}
+.card.pick:active {
+  transform: translateY(2px);
+}
+.card.dim {
+  opacity: 0.4;
+}
+.card.matched {
+  opacity: 0.35;
+}
+
+.card-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  justify-items: center;
+  max-width: 300px;
+}
+.hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  max-width: 540px;
+}
+.om-label,
+.sv-hand-label {
+  font-size: 0.95rem;
+  color: #777;
+  margin: 10px 0 4px;
+  font-weight: bold;
+}
+.om-mid {
+  min-height: 8px;
+}
+.sv-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+}
+.sv-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 58px;
+}
+.sv-suit {
+  font-size: 1.5rem;
+  width: 30px;
+  text-align: center;
+  font-weight: bold;
+  color: #333;
+}
+.sv-suit.red {
+  color: #e23b3b;
+}
+.sv-controls {
+  margin-top: 12px;
+}
+
+/* ピアノタイル */
+.piano-board {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  height: 420px;
+  margin: 0 auto;
+  background: repeating-linear-gradient(
+    to right,
+    #ffffff 0,
+    #ffffff calc(25% - 1px),
+    #e2e2e2 calc(25% - 1px),
+    #e2e2e2 25%
+  );
+  border: 5px solid #333;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.12);
+}
+.piano-tile {
+  position: absolute;
+  width: 25%;
+  height: 105px;
+  background: #2b2b2b;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.piano-tile.hit {
+  background: var(--green);
+}
+.piano-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 2;
+}
+.piano-lead {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--purple);
+}
+.piano-score {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--pink);
+}
+
 .start-btn {
   background: var(--pink);
   border: none;
